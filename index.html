@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>لعبة العجلة والتحديات الجماعية 🎡</title>
+    <title>لعبة العجلة والتحديات الشخصية 🎡</title>
     <!-- PeerJS Library -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -387,33 +387,51 @@
         let hostConnection = null;
         const clientConnections = [];
         let players = [], currentTurnIndex = 0, isMyTurn = false;
-        let gameStarted = false; // هل بدأت اللعبة أم لا
+        let gameStarted = false;
         let micEnabled = true, audioEnabled = true;
 
+        // منشئ أصوات تفاعلية باستخدام Web Audio API (بدون الحاجة لملفات خارجية)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // بنك أسئلة خصوصية وحياتية (بدون أي علاقة باللعبة) (300 سؤال: 100 لكل تصنيف)
         const categories = {
-            romantic: { name: "رومانسي 💖", color: "#ec4899", questions: Array.from({length: 100}, (_, i) => [
-                "أول مرة حسيت فيها بالحُب الحقيقي كانت إيمتى؟", "إيه المواصفات اللي مقتنع إنها لازم تكون في شريك حياتك؟",
-                "لو تقدر تعترف بحبك لحد دلوقتي بدون خوف هتقول لمين؟", "إيه أكتر تصرف رومانسي اتعملك ومستحيل تنساه؟",
-                "شايف الحب بيجي مرة واحدة ولا ممكن يتكرر؟", "لو هتهدي أغنية رومانسي لاسم واحد معانا، هتهديها لمين؟",
-                "إيه أكتر حاجة تهمك في العلاقات: الاهتمام ولا الثقة؟", "لو شريك حياتك طلب تتخلي عن طموحك عشانه، هتوافق؟",
-                "أكتر كلمة رومانسية بتلمس قلبك لما تسمعها؟", "هل تؤمن بالحب من أول نظرة؟"
-            ][i % 10] + ` (${i+1})`) },
+            romantic: { name: "رومانسي 💖", color: "#ec4899", questions: [
+                "هل سبق وعشقت شخص وكنت تخاف تصارحه بحبك؟", "إيه هو أكتر موقف شعرت فيه بإن قلبك بيدق بسرعة من شخص معين؟",
+                "هل تؤمن إن الحب الحقيقي بيجي مرة واحدة في العمر ولا ممكن يتكرر؟", "إيه هي المواصفات الخفية اللي بتتمنى تكون في شريك حياتك المستقبلية؟",
+                "لو قدرت ترجع بالزمن لشخص حبته وسابك، هتقوله إيه؟", "أكتر كلمة رومانسية سمعتها في حياتك ومستحيل تنساها؟",
+                "هل بتفضل الارتباط عن حب ولا الصالونات؟ وليه؟", "إيه أكتر صفة بتجذبك في الطرف التاني من أول نظرة؟",
+                "لو حد اعترفلك بحب وأنت مش بتبادله نفس الشعور، بتتصرف إزاي؟", "إيه هو مفهومك الحقيقي عن الاستقرار العاطفي؟"
+            ].flatMap(q => Array.from({length: 10}, (_, i) => q + ` (${i+1})`)) },
             
-            farewell: { name: "فراق 💔", color: "#8b5cf6", questions: Array.from({length: 100}, (_, i) => [
-                "مين أبعد شخص عنك دلوقتي ونفسك يرجع زي زمان؟", "إيه أصعب درس اتعلمته من تجربة فراق ألمتك؟",
-                "هل سبق وعيطت بسب شخص سابك ويمشي؟", "إيه أكتر حاجة بتفكرك بشخص كان غالي عليك وبعد؟",
-                "لو جالك الفرصة تعاتب شخص فارقك، هتقوله إيه؟", "شايف إن الفراق بيقسي القلب ولا بيخليه يضعف؟",
-                "أصعب حاجة في البُعد: الذكريات ولا التعود؟", "لو الشخص اللي فارقته رجع يطلب فرصة تانية، هتقبل؟",
-                "إيه القرار اللي ندمت عليه في علاقة قديمة وانتهت؟", "هل المسافات هي السبب الحقيقي للفراق ولا الإهمال؟"
-            ][i % 10] + ` (${i+1})`) },
+            farewell: { name: "فراق 💔", color: "#8b5cf6", questions: [
+                "مين أكتر شخص فارقته في حياتك وحسيت إن جزء منك راح معاه؟", "هل عيطت في يوم لوحدك بسبب شخص غالي سابك واداك ضهره؟",
+                "إيه هو أصعب موقف حسيت فيه بالوحدة بعد فراق مفاجئ؟", "لو شخص غاب عنك فترة وظهر تاني فجأة، هتديله فرصة ولا هتبعد؟",
+                "هل المسافات والظروف هي السبب الحقيقي للفراق ولا الإهمال؟", "إيه الذكريات اللي بتجيلك بالليل وتمنعك عن النوم لشخص مشي؟",
+                "هل قدرت تتخطى كل تجارب الفراق القديمة في حياتك ولا لسه سابت أثر؟", "إيه هو أكتر عتاب نفسك تقوله لشخص ودعته للأبد؟",
+                "هل الفراق بيقسي القلب ويخليه ما يحبش تاني بنفس السهولة؟", "متى بتعرف إن العلاقة انتهت فعلاً ومفيش رجعة؟"
+            ].flatMap(q => Array.from({length: 10}, (_, i) => q + ` (${i+1})`)) },
             
-            candor: { name: "صراحة 🎯", color: "#06b6d4", questions: Array.from({length: 100}, (_, i) => [
-                "إيه أكتر سر مخبيه عن أقرب الناس ليك وتخاف يتعرف؟", "مين أكتر حد معانا في اللعبة بتغير منه في حاجة معينة؟",
-                "لو قدامك فرصة تظلم شخص ومحدش يعرف، هتعملها؟", "إيه أكتر صفة بتكرهها في شخصيتك ونفسك تغيرها؟",
-                "أكتر موقف محرج حصلك ومستحيل تنساه طول حياتك؟", "هل سبق وكذبت كذبة كبيرة وغيرت مجرى حياتك؟",
-                "مين الشخص اللي في اللعبة شايفه أذكى واحد؟", "لو معاك مليون جنيه دلوقتي، أول تصرف هتعمله إيه؟",
-                "إيه أكتر عادة غريبة بتعملها لما تكون لوحدك؟", "هل سبق وأخدت حاجة مش من حقك ومحكيتش لحد؟"
-            ][i % 10] + ` (${i+1})`) }
+            candor: { name: "صراحة 🎯", color: "#06b6d4", questions: [
+                "إيه هو أكتر سر عميق مخبيه عن أهلك وأقرب الناس ليك؟", "ما هو أكبر خطأ ارتكبته في حياتك وبتندم عليه لحد دلوقتي؟",
+                "لو قدامك فرصة تمسح يوم معين من حياتك، هتختار يوم إيه؟", "إيه أكتر صفة سيئة في شخصيتك ونفسك تتخلص منها بس مش قادر؟",
+                "هل سبق وكذبت كذبة كبيرة ونجيت منها بس ضميرك لسه مأنبك؟", "مين الشخص اللي في حياتك ومش طايقه بس مجبر تتعامل معاه؟",
+                "إيه أكتر موقف محرج حصلك في حياتك العاطفية أو الشخصية؟", "هل بتخاف من المستقبل والوحدة؟ وإيه أكتر حاجة قلقك؟",
+                "لو معاك فرصة تبدأ حياتك من جديد في مكان تاني، هتعمل كده؟", "إيه هي الحقيقة اللي محدش في الدنيا كلها يعرفها غيرك أنت لوحدك؟"
+            ].flatMap(q => Array.from({length: 10}, (_, i) => q + ` (${i+1})`)) }
         };
 
         const usedQuestions = { romantic: [], farewell: [], candor: [] };
@@ -496,7 +514,6 @@
                     updateGameState();
                     addSystemMessage(`تم إنشاء الغرفة! شارك الكود (${roomId}) مع أصحابك.`);
                 } else {
-                    // اختبار ما إذا كانت اللعبة قد بدأت بالفعل أو الغرفة مقفولة
                     const testConn = peer.connect(roomId);
                     let checked = false;
                     testConn.on('open', () => {
@@ -570,7 +587,7 @@
                         break;
                     case 'WHEEL_SPUN':
                         gameStarted = true;
-                        animateWheel(data.degree, data.question, data.player, data.category);
+                        animateWheel(data.targetSliceIndex, data.question, data.player, data.categoryType);
                         break;
                     case 'SUBMIT_ANSWER':
                         if (isHost) {
@@ -607,16 +624,12 @@
             gameStarted = true;
 
             const randomSliceIndex = Math.floor(Math.random() * wheelSlices.length);
-            const sliceAngle = 360 / wheelSlices.length;
-            const targetSliceDegree = 360 - (randomSliceIndex * sliceAngle + sliceAngle / 2);
-            const totalDegree = 1440 + targetSliceDegree;
-
             const selectedType = wheelSlices[randomSliceIndex].type;
             const question = getUniqueQuestion(selectedType);
             const player = players[currentTurnIndex].username;
 
-            broadcast({ type: 'WHEEL_SPUN', degree: totalDegree, question, player, category: selectedType });
-            animateWheel(totalDegree, question, player, selectedType);
+            broadcast({ type: 'WHEEL_SPUN', targetSliceIndex: randomSliceIndex, question, player, categoryType: selectedType });
+            animateWheel(randomSliceIndex, question, player, selectedType);
         }
 
         function handleSpinClick() {
@@ -626,12 +639,29 @@
             else hostConnection.send({ type: 'SPIN_WHEEL' });
         }
 
-        function animateWheel(targetDegree, question, player, categoryType) {
+        function animateWheel(targetSliceIndex, question, player, categoryType) {
             document.getElementById('spin-btn').disabled = true;
+            document.getElementById('question-box').style.display = 'none';
+
+            const numSlices = wheelSlices.length;
+            const sliceAngle = 360 / numSlices;
+            // حساب الزاوية بدقة تامة لتستقر السهم عند منتصف القطاع المستهدف بالضبط
+            const targetAngleDeg = 360 - (targetSliceIndex * sliceAngle + sliceAngle / 2);
+            const totalDegree = 1440 + targetAngleDeg;
+
             canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0.9, 0.15, 1)';
-            canvas.style.transform = `rotate(${targetDegree}deg)`;
+            canvas.style.transform = `rotate(${totalDegree}deg)`;
+
+            // محاكاة صوت دوران العجلة (Ticking sound)
+            let tickCount = 0;
+            const tickInterval = setInterval(() => {
+                playTickSound();
+                tickCount++;
+                if (tickCount > 35) clearInterval(tickInterval);
+            }, 100);
 
             setTimeout(() => {
+                clearInterval(tickInterval);
                 const cat = categories[categoryType];
                 const badge = document.getElementById('category-badge');
                 badge.innerText = cat.name;
