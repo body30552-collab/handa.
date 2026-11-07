@@ -4,21 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لعبة العجلة والشات الصوتي الجماعي</title>
-    <!-- Firebase Libraries -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <!-- PeerJS for Audio Chat -->
+    <!-- PeerJS Library for P2P Data & Audio Connection -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
         body { background: #0f172a; color: #f8fafc; height: 100vh; display: flex; padding: 20px; gap: 20px; }
         
-        #join-screen {
+        /* شاشة البداية والاختيار */
+        #start-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.95); display: flex;
+            background: rgba(15, 23, 42, 0.98); display: flex;
             flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
         }
-        .card { background: #1e293b; padding: 30px; border-radius: 16px; text-align: center; width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .card { background: #1e293b; padding: 30px; border-radius: 16px; text-align: center; width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .card h2 { margin-bottom: 20px; color: #38bdf8; }
         input {
             width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #334155;
@@ -26,14 +24,22 @@
         }
         .btn {
             width: 100%; padding: 12px; background: #38bdf8; color: #0f172a;
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px;
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; transition: 0.2s;
         }
+        .btn:hover { background: #0284c7; color: #fff; }
+        .btn-secondary { background: #10b981; color: #fff; }
+        .btn-secondary:hover { background: #059669; }
         .btn:disabled { background: #475569; cursor: not-allowed; color: #94a3b8; }
+        .divider { margin: 15px 0; border-top: 1px solid #334155; position: relative; }
+        .divider span { position: absolute; top: -12px; background: #1e293b; padding: 0 10px; left: 50%; transform: translateX(-50%); color: #94a3b8; font-size: 12px; }
 
+        /* منطقة اللعبة الرئيسية */
         .game-main { flex: 2; background: #1e293b; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
         .header-info h2 { color: #38bdf8; font-size: 24px; text-align: center; }
         .header-info h3 { color: #f59e0b; margin-top: 5px; text-align: center; }
+        .room-code-badge { background: #0f172a; border: 1px dashed #38bdf8; color: #38bdf8; padding: 5px 15px; border-radius: 20px; font-weight: bold; display: inline-block; margin-top: 5px; cursor: pointer; }
 
+        /* العجلة */
         .wheel-container { position: relative; width: 300px; height: 300px; margin: 10px 0; }
         .pointer {
             position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
@@ -42,23 +48,25 @@
         }
         #canvas { background: #0f172a; border-radius: 50%; border: 6px solid #38bdf8; }
 
+        /* صندوق السؤال الإجابة */
         #question-box {
             background: #0f172a; border: 2px solid #38bdf8; border-radius: 12px;
             padding: 15px; width: 100%; text-align: center; display: none; margin-top: 15px;
         }
         #question-text { color: #f43f5e; font-size: 18px; margin-bottom: 10px; }
 
+        /* اللوحة الجانبية */
         .sidebar { flex: 1; background: #1e293b; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
         .section-box { background: #0f172a; padding: 12px; border-radius: 10px; }
         .section-box h4 { margin-bottom: 8px; color: #38bdf8; }
 
         #players-list { list-style: none; max-height: 100px; overflow-y: auto; }
-        #players-list li { padding: 4px 8px; background: #1e293b; margin-bottom: 4px; border-radius: 4px; }
+        #players-list li { padding: 4px 8px; background: #1e293b; margin-bottom: 4px; border-radius: 4px; font-size: 14px; }
 
         #chat-box { flex: 1; min-height: 200px; overflow-y: auto; background: #0f172a; padding: 10px; border-radius: 8px; font-size: 14px; }
-        .chat-input-group { display: flex; gap: 8px; }
-        .chat-input-group input { width: 75%; }
-        .chat-input-group button { width: 25%; margin-top: 8px; }
+        .chat-input-group { display: flex; gap: 8px; margin-top: 8px; }
+        .chat-input-group input { width: 75%; margin: 0; }
+        .chat-input-group button { width: 25%; margin: 0; }
 
         .controls-row { display: flex; gap: 10px; }
         .controls-row button { flex: 1; font-size: 13px; }
@@ -66,21 +74,27 @@
 </head>
 <body>
 
-    <!-- شاشة الدخول -->
-    <div id="join-screen">
+    <!-- شاشة الاختيار والدخول -->
+    <div id="start-screen">
         <div class="card">
-            <h2>دخول اللعبة 🎯</h2>
-            <input type="text" id="username-input" placeholder="اسمك">
-            <input type="text" id="room-input" placeholder="رقم الغرفة (مثال: 777)">
-            <button class="btn" onclick="joinGame()">دخول الان</button>
+            <h2>لعبة الأسئلة 🎯</h2>
+            <input type="text" id="username-input" placeholder="اسمك للاستخدام في اللعبة">
+            
+            <button class="btn btn-secondary" onclick="createRoom()">إنشاء غرفة جديدة ➕</button>
+            
+            <div class="divider"><span>أو</span></div>
+            
+            <input type="text" id="room-code-input" placeholder="أدخل كود الغرفة">
+            <button class="btn" onclick="joinRoom()">الانضمام لغرفة 🔗</button>
         </div>
     </div>
 
-    <!-- اللعبة الرئيسية -->
+    <!-- الواجهة الرئيسية للعبة -->
     <div class="game-main">
         <div class="header-info">
-            <h2 id="room-title">الغرفة: -</h2>
-            <h3 id="turn-title">انتظار اللاعبين...</h3>
+            <h2>الغرفة: <span id="room-id-display">-</span></h2>
+            <div class="room-code-badge" onclick="copyRoomCode()" title="اضغط للنسخ">اضغط لنسخ كود الغرفة 📋</div>
+            <h3 id="turn-title">في انتظار انضمام اللاعبين...</h3>
         </div>
 
         <div class="wheel-container">
@@ -88,7 +102,7 @@
             <canvas id="canvas" width="300" height="300"></canvas>
         </div>
 
-        <button id="spin-btn" class="btn" style="width: 200px;" onclick="spinWheel()" disabled>لف العجلة!</button>
+        <button id="spin-btn" class="btn" style="width: 200px;" onclick="handleSpinClick()" disabled>لف العجلة!</button>
 
         <div id="question-box">
             <h3 id="question-text"></h3>
@@ -118,8 +132,8 @@
             <h4>💬 الشات النصي</h4>
             <div id="chat-box"></div>
             <div class="chat-input-group">
-                <input type="text" id="chat-input" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendMessage()">
-                <button class="btn" onclick="sendMessage()">إرسال</button>
+                <input type="text" id="chat-input" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+                <button class="btn" onclick="sendChatMessage()">إرسال</button>
             </div>
         </div>
     </div>
@@ -127,15 +141,19 @@
     <div id="audio-container"></div>
 
     <script>
-        // إعداد Firebase مؤقت للتجربة المباشرة
-        const firebaseConfig = {
-            databaseURL: "https://wheel-game-demo-default-rtdb.firebaseio.com"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        let myKey = "", myUsername = "", roomId = "", peerId = "";
-        let peer, myStream, currentRoomRef, playersList = [], currentTurnIndex = 0;
+        let peer = null;
+        let myStream = null;
+        let myUsername = "";
+        let roomId = "";
+        let isHost = false;
+        
+        // الاتصالات
+        let hostConnection = null; // للاعب للانضمام للهوست
+        const clientConnections = []; // للهوست لمتابعة كل اللاعبين
+        
+        let players = []; // [{ id, username }]
+        let currentTurnIndex = 0;
+        let isMyTurn = false;
         let micEnabled = true, audioEnabled = true;
 
         const questions = [
@@ -144,10 +162,12 @@
             "مين أكتر حد بتثق فيه في صحابك؟",
             "إيه البلد اللي نفسك تسافرها وتعيش فيها؟",
             "أكتر صفة بتحبها وأكتر صفة بتكرهها في نفسك؟",
-            "لو تقدر ترجع بالزمن، هتغير إيه؟"
+            "لو تقدر ترجع بالزمن، هتغير إيه؟",
+            "إيه أكتر أكلة بتحبها ومتقدرش تستغنى عنها؟",
+            "أكتر سر خبيته عن صحابك إيه؟"
         ];
 
-        // 1. رسم العجلة
+        // رسم العجلة
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const colors = ['#f43f5e', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
@@ -165,102 +185,180 @@
         }
         drawWheel();
 
-        // 2. الانضمام للغرفة وتفعيل الصوت
-        async function joinGame() {
+        // إنشاء غرفة جديدة
+        async function createRoom() {
             myUsername = document.getElementById('username-input').value.trim();
-            roomId = document.getElementById('room-input').value.trim();
+            if (!myUsername) return alert("من فضلك أدخل اسمك أولاً!");
 
-            if (!myUsername || !roomId) return alert("اكتب اسمك ورقم الغرفة!");
+            isHost = true;
+            roomId = Math.floor(100000 + Math.random() * 900000).toString(); // كود عشوائي من 6 أرقام
+            
+            await initMediaAndPeer(roomId);
+        }
 
-            document.getElementById('join-screen').style.display = 'none';
-            document.getElementById('room-title').innerText = `الغرفة: ${roomId}`;
+        // الانضمام لغرفة موجودة
+        async function joinRoom() {
+            myUsername = document.getElementById('username-input').value.trim();
+            roomId = document.getElementById('room-code-input').value.trim();
 
+            if (!myUsername) return alert("من فضلك أدخل اسمك أولاً!");
+            if (!roomId) return alert("من فضلك أدخل كود الغرفة!");
+
+            isHost = false;
+            await initMediaAndPeer();
+        }
+
+        // تهيئة الصوت والـ Peer
+        async function initMediaAndPeer(customId = null) {
             try {
                 myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            } catch (e) { console.warn("مفيش إذن مايك:", e); }
+            } catch (e) { console.warn("لم يتم تفعيل الميكروفون:", e); }
 
-            peer = new Peer();
+            peer = customId ? new Peer(customId) : new Peer();
+
             peer.on('open', (id) => {
-                peerId = id;
-                initFirebase();
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('room-id-display').innerText = roomId;
+
+                if (isHost) {
+                    players.push({ id: peer.id, username: myUsername });
+                    updateGameState();
+                    addSystemMessage(`تم إنشاء الغرفة! شارك الكود (${roomId}) مع أصحابك.`);
+                } else {
+                    // الاتصال بالهوست
+                    hostConnection = peer.connect(roomId);
+                    setupDataConnection(hostConnection);
+
+                    // الاتصال الصوتي بالهوست
+                    if (myStream) {
+                        const call = peer.call(roomId, myStream);
+                        setupCall(call);
+                    }
+                }
+            });
+
+            // استقبال الاتصالات (للهوست واللاعبين)
+            peer.on('connection', (conn) => {
+                if (isHost) {
+                    clientConnections.push(conn);
+                    setupDataConnection(conn);
+                }
             });
 
             peer.on('call', (call) => {
                 call.answer(myStream);
-                call.on('stream', (stream) => addAudioStream(call.peer, stream));
+                setupCall(call);
             });
         }
 
-        function initFirebase() {
-            currentRoomRef = db.ref('rooms/' + roomId);
-            const pRef = currentRoomRef.child('players').push();
-            myKey = pRef.key;
+        // معالجة نقل البيانات عبر الشبكة
+        function setupDataConnection(conn) {
+            conn.on('data', (data) => {
+                switch (data.type) {
+                    case 'JOIN':
+                        if (isHost) {
+                            players.push({ id: conn.peer, username: data.username });
+                            broadcastState();
+                            broadcastChat('النظام', `${data.username} انضم للغرفة 🎉`);
+                        }
+                        break;
 
-            pRef.set({ username: myUsername, peerId: peerId });
-            pRef.onDisconnect().remove();
+                    case 'STATE_UPDATE':
+                        players = data.players;
+                        currentTurnIndex = data.currentTurnIndex;
+                        updateGameState();
+                        break;
 
-            // متابعة اللاعبين
-            currentRoomRef.child('players').on('value', (snap) => {
-                const val = snap.val() || {};
-                playersList = Object.keys(val).map(k => ({ key: k, ...val[k] }));
+                    case 'SPIN_WHEEL':
+                        if (isHost) {
+                            const degree = Math.floor(Math.random() * 360) + 1440;
+                            const question = questions[Math.floor(Math.random() * questions.length)];
+                            const player = players[currentTurnIndex].username;
 
-                // الاتصال الصوتي باللاعبين الجدد
-                playersList.forEach(p => {
-                    if (p.peerId !== peerId && myStream) {
-                        const call = peer.call(p.peerId, myStream);
-                        call.on('stream', (stream) => addAudioStream(p.peerId, stream));
-                    }
-                });
+                            broadcast({ type: 'WHEEL_SPUN', degree, question, player });
+                            animateWheel(degree, question, player);
+                        }
+                        break;
 
-                updateGameState();
-            });
+                    case 'WHEEL_SPUN':
+                        animateWheel(data.degree, data.question, data.player);
+                        break;
 
-            // متابعة العجلة والأدوار
-            currentRoomRef.child('state').on('value', (snap) => {
-                const state = snap.val();
-                if (!state) return;
+                    case 'SUBMIT_ANSWER':
+                        if (isHost) {
+                            broadcastChat(`إجابة ${data.username}`, data.answer, true);
+                            currentTurnIndex = (currentTurnIndex + 1) % players.length;
+                            broadcastState();
+                        }
+                        break;
 
-                currentTurnIndex = state.turnIndex || 0;
-                updateGameState();
-
-                if (state.lastSpin && state.lastSpin.timestamp > (window.lastSpinTime || 0)) {
-                    window.lastSpinTime = state.lastSpin.timestamp;
-                    animateWheel(state.lastSpin.degree, state.lastSpin.question, state.lastSpin.player);
+                    case 'CHAT_MSG':
+                        if (isHost) {
+                            broadcastChat(data.sender, data.text);
+                        } else {
+                            renderChatMessage(data.sender, data.text, data.isAnswer);
+                        }
+                        break;
                 }
             });
 
-            // متابعة الشات
-            currentRoomRef.child('chat').on('child_added', (snap) => {
-                const msg = snap.val();
-                const box = document.getElementById('chat-box');
-                const div = document.createElement('div');
-                div.style.margin = '4px 0';
-                div.style.color = msg.isAnswer ? '#10b981' : '#f8fafc';
-                div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
-                box.appendChild(div);
-                box.scrollTop = box.scrollHeight;
+            conn.on('open', () => {
+                if (!isHost) {
+                    conn.send({ type: 'JOIN', username: myUsername });
+                }
             });
+        }
+
+        function setupCall(call) {
+            call.on('stream', (remoteStream) => {
+                addAudioStream(call.peer, remoteStream);
+            });
+        }
+
+        function broadcast(data) {
+            if (isHost) {
+                clientConnections.forEach(c => {
+                    if (c.open) c.send(data);
+                });
+            }
+        }
+
+        function broadcastState() {
+            const stateData = { type: 'STATE_UPDATE', players, currentTurnIndex };
+            updateGameState();
+            broadcast(stateData);
+        }
+
+        function broadcastChat(sender, text, isAnswer = false) {
+            const chatData = { type: 'CHAT_MSG', sender, text, isAnswer };
+            renderChatMessage(sender, text, isAnswer);
+            broadcast(chatData);
         }
 
         function updateGameState() {
             const list = document.getElementById('players-list');
-            list.innerHTML = playersList.map((p, idx) => `<li>${p.username} ${idx === currentTurnIndex ? '👑' : ''}</li>`).join('');
+            list.innerHTML = players.map((p, idx) => `<li>${p.username} ${idx === currentTurnIndex ? '👑 (دوره)' : ''}</li>`).join('');
 
-            if (playersList.length > 0) {
-                const currentPlayer = playersList[currentTurnIndex % playersList.length];
+            if (players.length > 0) {
+                const currentPlayer = players[currentTurnIndex % players.length];
                 document.getElementById('turn-title').innerText = `الدور على: ${currentPlayer ? currentPlayer.username : '-'}`;
-                const isMyTurn = currentPlayer && currentPlayer.key === myKey;
+                isMyTurn = currentPlayer && currentPlayer.id === peer.id;
                 document.getElementById('spin-btn').disabled = !isMyTurn;
             }
         }
 
-        function spinWheel() {
-            const randomDegree = Math.floor(Math.random() * 360) + 1440;
-            const question = questions[Math.floor(Math.random() * questions.length)];
+        function handleSpinClick() {
+            if (!isMyTurn) return;
+            if (isHost) {
+                const degree = Math.floor(Math.random() * 360) + 1440;
+                const question = questions[Math.floor(Math.random() * questions.length)];
+                const player = players[currentTurnIndex].username;
 
-            currentRoomRef.child('state').update({
-                lastSpin: { degree: randomDegree, question: question, player: myUsername, timestamp: Date.now() }
-            });
+                broadcast({ type: 'WHEEL_SPUN', degree, question, player });
+                animateWheel(degree, question, player);
+            } else {
+                hostConnection.send({ type: 'SPIN_WHEEL' });
+            }
         }
 
         function animateWheel(targetDegree, question, player) {
@@ -271,8 +369,7 @@
             setTimeout(() => {
                 document.getElementById('question-box').style.display = 'block';
                 document.getElementById('question-text').innerText = `سؤال لـ (${player}): ${question}`;
-                const currentPlayer = playersList[currentTurnIndex % playersList.length];
-                document.getElementById('answer-section').style.display = (currentPlayer && currentPlayer.key === myKey) ? 'block' : 'none';
+                document.getElementById('answer-section').style.display = isMyTurn ? 'block' : 'none';
             }, 4000);
         }
 
@@ -280,27 +377,49 @@
             const ans = document.getElementById('answer-input').value.trim();
             if (!ans) return;
 
-            currentRoomRef.child('chat').push({ sender: `إجابة ${myUsername}`, text: ans, isAnswer: true });
+            if (isHost) {
+                broadcastChat(`إجابة ${myUsername}`, ans, true);
+                currentTurnIndex = (currentTurnIndex + 1) % players.length;
+                broadcastState();
+            } else {
+                hostConnection.send({ type: 'SUBMIT_ANSWER', username: myUsername, answer: ans });
+            }
+
             document.getElementById('answer-input').value = '';
             document.getElementById('question-box').style.display = 'none';
-
-            // نقل الدور
-            const nextTurn = (currentTurnIndex + 1) % playersList.length;
-            currentRoomRef.child('state').update({ turnIndex: nextTurn });
         }
 
-        function sendMessage() {
+        function sendChatMessage() {
             const input = document.getElementById('chat-input');
-            if (input.value.trim()) {
-                currentRoomRef.child('chat').push({ sender: myUsername, text: input.value.trim() });
-                input.value = '';
+            const text = input.value.trim();
+            if (!text) return;
+
+            if (isHost) {
+                broadcastChat(myUsername, text);
+            } else {
+                hostConnection.send({ type: 'CHAT_MSG', sender: myUsername, text: text });
             }
+            input.value = '';
         }
 
-        function addAudioStream(pId, stream) {
-            if (document.getElementById(`audio-${pId}`)) return;
+        function renderChatMessage(sender, text, isAnswer = false) {
+            const box = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.style.margin = '4px 0';
+            div.style.color = isAnswer ? '#10b981' : '#f8fafc';
+            div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function addSystemMessage(text) {
+            renderChatMessage('النظام', text);
+        }
+
+        function addAudioStream(peerId, stream) {
+            if (document.getElementById(`audio-${peerId}`)) return;
             const audio = document.createElement('audio');
-            audio.id = `audio-${pId}`;
+            audio.id = `audio-${peerId}`;
             audio.srcObject = stream;
             audio.autoplay = true;
             document.getElementById('audio-container').appendChild(audio);
@@ -317,6 +436,11 @@
             audioEnabled = !audioEnabled;
             document.querySelectorAll('#audio-container audio').forEach(a => a.muted = !audioEnabled);
             document.getElementById('audio-btn').innerText = audioEnabled ? "كتم الصوت 🔊" : "تشغيل الصوت 🔇";
+        }
+
+        function copyRoomCode() {
+            navigator.clipboard.writeText(roomId);
+            alert("تم نسخ كود الغرفة: " + roomId);
         }
     </script>
 </body>
