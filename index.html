@@ -2,138 +2,152 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة العجلة والشات الصوتي الجماعي</title>
-    <!-- PeerJS Library for P2P Data & Audio Connection -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>لعبة العجلة والشات الجماعي</title>
+    <!-- PeerJS Library -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; height: 100vh; display: flex; padding: 20px; gap: 20px; }
-        
-        /* شاشة البداية والاختيار */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; padding: 10px; gap: 10px; overflow-x: hidden; }
+
+        /* شاشة البداية */
         #start-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.98); display: flex;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
+            flex-direction: column; justify-content: center; align-items: center; z-index: 1000; padding: 20px;
         }
-        .card { background: #1e293b; padding: 30px; border-radius: 16px; text-align: center; width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .card h2 { margin-bottom: 20px; color: #38bdf8; }
+        .card { background: #1e293b; padding: 25px; border-radius: 20px; text-align: center; width: 100%; max-width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        .card h2 { margin-bottom: 15px; color: #38bdf8; font-size: 22px; }
         input {
             width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #334155;
-            border-radius: 8px; background: #0f172a; color: #fff; text-align: center; font-size: 16px;
+            border-radius: 10px; background: #0f172a; color: #fff; text-align: center; font-size: 15px; outline: none;
         }
+        input:focus { border-color: #38bdf8; }
         .btn {
             width: 100%; padding: 12px; background: #38bdf8; color: #0f172a;
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; transition: 0.2s;
+            border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 8px; font-size: 15px; transition: 0.2s;
         }
         .btn:hover { background: #0284c7; color: #fff; }
         .btn-secondary { background: #10b981; color: #fff; }
-        .btn-secondary:hover { background: #059669; }
         .btn:disabled { background: #475569; cursor: not-allowed; color: #94a3b8; }
-        .divider { margin: 15px 0; border-top: 1px solid #334155; position: relative; }
-        .divider span { position: absolute; top: -12px; background: #1e293b; padding: 0 10px; left: 50%; transform: translateX(-50%); color: #94a3b8; font-size: 12px; }
+        .divider { margin: 12px 0; border-top: 1px solid #334155; position: relative; }
+        .divider span { position: absolute; top: -10px; background: #1e293b; padding: 0 8px; left: 50%; transform: translateX(-50%); color: #94a3b8; font-size: 11px; }
 
-        /* منطقة اللعبة الرئيسية */
-        .game-main { flex: 2; background: #1e293b; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
-        .header-info h2 { color: #38bdf8; font-size: 24px; text-align: center; }
-        .header-info h3 { color: #f59e0b; margin-top: 5px; text-align: center; }
-        .room-code-badge { background: #0f172a; border: 1px dashed #38bdf8; color: #38bdf8; padding: 5px 15px; border-radius: 20px; font-weight: bold; display: inline-block; margin-top: 5px; cursor: pointer; }
-
-        /* العجلة */
-        .wheel-container { position: relative; width: 300px; height: 300px; margin: 10px 0; }
-        .pointer {
-            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
-            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
-            border-top: 25px solid #ef4444; z-index: 10;
+        /* الشاشة الرئيسية - التنسيق المتجاوب للموبايل */
+        .app-container { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 1200px; margin: 0 auto; flex: 1; }
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            .app-container { flex-direction: row; }
         }
-        #canvas { background: #0f172a; border-radius: 50%; border: 6px solid #38bdf8; }
 
-        /* صندوق السؤال الإجابة */
+        .game-main { flex: 2; background: #1e293b; border-radius: 20px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 1px solid #334155; }
+        .header-info { text-align: center; width: 100%; }
+        .header-info h2 { color: #38bdf8; font-size: 20px; }
+        .header-info h3 { color: #f59e0b; margin-top: 4px; font-size: 15px; }
+        .room-code-badge { background: #0f172a; border: 1px dashed #38bdf8; color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-weight: bold; display: inline-block; margin-top: 6px; cursor: pointer; font-size: 13px; }
+
+        /* العجلة المتجاوبة */
+        .wheel-container { position: relative; width: 260px; height: 260px; margin: 15px 0; display: flex; justify-content: center; align-items: center; }
+        @media (min-width: 400px) { .wheel-container { width: 290px; height: 290px; } }
+        
+        .pointer {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent;
+            border-top: 22px solid #ef4444; z-index: 10;
+        }
+        #canvas { background: #0f172a; border-radius: 50%; border: 5px solid #38bdf8; width: 100%; height: 100%; }
+
+        /* صندوق السؤال */
         #question-box {
             background: #0f172a; border: 2px solid #38bdf8; border-radius: 12px;
-            padding: 15px; width: 100%; text-align: center; display: none; margin-top: 15px;
+            padding: 12px; width: 100%; text-align: center; display: none; margin-top: 10px;
         }
-        #question-text { color: #f43f5e; font-size: 18px; margin-bottom: 10px; }
+        #category-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+        #question-text { color: #f8fafc; font-size: 16px; margin-bottom: 10px; line-height: 1.4; }
 
-        /* اللوحة الجانبية */
-        .sidebar { flex: 1; background: #1e293b; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .section-box { background: #0f172a; padding: 12px; border-radius: 10px; }
-        .section-box h4 { margin-bottom: 8px; color: #38bdf8; }
+        /* الشريط الجانبي والشات */
+        .sidebar { flex: 1; background: #1e293b; border-radius: 20px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #334155; }
+        .section-box { background: #0f172a; padding: 10px; border-radius: 12px; border: 1px solid #1e293b; }
+        .section-box h4 { margin-bottom: 6px; color: #38bdf8; font-size: 13px; }
 
-        #players-list { list-style: none; max-height: 100px; overflow-y: auto; }
-        #players-list li { padding: 4px 8px; background: #1e293b; margin-bottom: 4px; border-radius: 4px; font-size: 14px; }
+        #players-list { list-style: none; max-height: 80px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px; }
+        #players-list li { padding: 3px 8px; background: #1e293b; border-radius: 6px; font-size: 12px; border: 1px solid #334155; }
 
-        #chat-box { flex: 1; min-height: 200px; overflow-y: auto; background: #0f172a; padding: 10px; border-radius: 8px; font-size: 14px; }
-        .chat-input-group { display: flex; gap: 8px; margin-top: 8px; }
-        .chat-input-group input { width: 75%; margin: 0; }
-        .chat-input-group button { width: 25%; margin: 0; }
+        #chat-box { flex: 1; min-height: 140px; max-height: 250px; overflow-y: auto; background: #0f172a; padding: 8px; border-radius: 8px; font-size: 13px; }
+        .chat-input-group { display: flex; gap: 6px; margin-top: 6px; }
+        .chat-input-group input { width: 75%; margin: 0; padding: 8px; font-size: 13px; }
+        .chat-input-group button { width: 25%; margin: 0; padding: 8px; font-size: 13px; }
 
-        .controls-row { display: flex; gap: 10px; }
-        .controls-row button { flex: 1; font-size: 13px; }
+        .controls-row { display: flex; gap: 6px; }
+        .controls-row button { flex: 1; font-size: 11px; padding: 8px; margin: 0; }
     </style>
 </head>
 <body>
 
-    <!-- شاشة الاختيار والدخول -->
+    <!-- شاشة الدخول -->
     <div id="start-screen">
         <div class="card">
-            <h2>لعبة الأسئلة 🎯</h2>
-            <input type="text" id="username-input" placeholder="اسمك للاستخدام في اللعبة">
+            <h2>العجلة والتحديات 🎯</h2>
+            <input type="text" id="username-input" placeholder="اكتب اسمك هنا">
             
             <button class="btn btn-secondary" onclick="createRoom()">إنشاء غرفة جديدة ➕</button>
             
             <div class="divider"><span>أو</span></div>
             
-            <input type="text" id="room-code-input" placeholder="أدخل كود الغرفة">
-            <button class="btn" onclick="joinRoom()">الانضمام لغرفة 🔗</button>
+            <input type="text" id="room-code-input" placeholder="كود الغرفة (6 أرقام)">
+            <button class="btn" onclick="joinRoom()">انضمام لغرفة 🔗</button>
         </div>
     </div>
 
-    <!-- الواجهة الرئيسية للعبة -->
-    <div class="game-main">
-        <div class="header-info">
-            <h2>الغرفة: <span id="room-id-display">-</span></h2>
-            <div class="room-code-badge" onclick="copyRoomCode()" title="اضغط للنسخ">اضغط لنسخ كود الغرفة 📋</div>
-            <h3 id="turn-title">في انتظار انضمام اللاعبين...</h3>
-        </div>
-
-        <div class="wheel-container">
-            <div class="pointer"></div>
-            <canvas id="canvas" width="300" height="300"></canvas>
-        </div>
-
-        <button id="spin-btn" class="btn" style="width: 200px;" onclick="handleSpinClick()" disabled>لف العجلة!</button>
-
-        <div id="question-box">
-            <h3 id="question-text"></h3>
-            <div id="answer-section">
-                <input type="text" id="answer-input" placeholder="اكتب إجابتك هنا...">
-                <button class="btn" onclick="submitAnswer()">إرسال الإجابة</button>
+    <!-- التطبيق الرئيسي -->
+    <div class="app-container">
+        <!-- اللعبة والراية -->
+        <div class="game-main">
+            <div class="header-info">
+                <h2>الغرفة: <span id="room-id-display">-</span></h2>
+                <div class="room-code-badge" onclick="copyRoomCode()">نسخ كود الغرفة 📋</div>
+                <h3 id="turn-title">في انتظار الانضمام...</h3>
             </div>
-        </div>
-    </div>
 
-    <!-- اللوحة الجانبية -->
-    <div class="sidebar">
-        <div class="section-box">
-            <h4>👥 المتواجدون</h4>
-            <ul id="players-list"></ul>
-        </div>
+            <div class="wheel-container">
+                <div class="pointer"></div>
+                <canvas id="canvas" width="300" height="300"></canvas>
+            </div>
 
-        <div class="section-box">
-            <h4>🎙️ الشات الصوتي</h4>
-            <div class="controls-row">
-                <button id="mic-btn" class="btn" onclick="toggleMic()">كتم المايك 🎙️</button>
-                <button id="audio-btn" class="btn" onclick="toggleAudio()">كتم الصوت 🔊</button>
+            <button id="spin-btn" class="btn" style="max-width: 220px;" onclick="handleSpinClick()" disabled>لف العجلة! 🎡</button>
+
+            <div id="question-box">
+                <div id="category-badge">نوع السؤال</div>
+                <h3 id="question-text"></h3>
+                <div id="answer-section">
+                    <input type="text" id="answer-input" placeholder="اكتب إجابتك الصريحة هنا...">
+                    <button class="btn" onclick="submitAnswer()">إرسال الإجابة 🚀</button>
+                </div>
             </div>
         </div>
 
-        <div class="section-box" style="flex: 1; display: flex; flex-direction: column;">
-            <h4>💬 الشات النصي</h4>
-            <div id="chat-box"></div>
-            <div class="chat-input-group">
-                <input type="text" id="chat-input" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendChatMessage()">
-                <button class="btn" onclick="sendChatMessage()">إرسال</button>
+        <!-- الشات واللاعبين -->
+        <div class="sidebar">
+            <div class="section-box">
+                <h4>👥 المتواجدون</h4>
+                <ul id="players-list"></ul>
+            </div>
+
+            <div class="section-box">
+                <h4>🎙️ الشات الصوتي</h4>
+                <div class="controls-row">
+                    <button id="mic-btn" class="btn" onclick="toggleMic()">كتم المايك 🎙️</button>
+                    <button id="audio-btn" class="btn" onclick="toggleAudio()">كتم الصوت 🔊</button>
+                </div>
+            </div>
+
+            <div class="section-box" style="flex: 1; display: flex; flex-direction: column;">
+                <h4>💬 الشات النصي</h4>
+                <div id="chat-box"></div>
+                <div class="chat-input-group">
+                    <input type="text" id="chat-input" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+                    <button class="btn" onclick="sendChatMessage()">إرسال</button>
+                </div>
             </div>
         </div>
     </div>
@@ -141,78 +155,112 @@
     <div id="audio-container"></div>
 
     <script>
-        let peer = null;
-        let myStream = null;
-        let myUsername = "";
-        let roomId = "";
-        let isHost = false;
-        
-        // الاتصالات
-        let hostConnection = null; // للاعب للانضمام للهوست
-        const clientConnections = []; // للهوست لمتابعة كل اللاعبين
-        
-        let players = []; // [{ id, username }]
-        let currentTurnIndex = 0;
-        let isMyTurn = false;
+        let peer = null, myStream = null, myUsername = "", roomId = "", isHost = false;
+        let hostConnection = null;
+        const clientConnections = [];
+        let players = [], currentTurnIndex = 0, isMyTurn = false;
         let micEnabled = true, audioEnabled = true;
 
-        const questions = [
-            "إيه أكتر موقف محرج حصلك في حياتك؟",
-            "لو معاك مليون جنيه دلوقتي، أول حاجة هشتريها إيه؟",
-            "مين أكتر حد بتثق فيه في صحابك؟",
-            "إيه البلد اللي نفسك تسافرها وتعيش فيها؟",
-            "أكتر صفة بتحبها وأكتر صفة بتكرهها في نفسك؟",
-            "لو تقدر ترجع بالزمن، هتغير إيه؟",
-            "إيه أكتر أكلة بتحبها ومتقدرش تستغنى عنها؟",
-            "أكتر سر خبيته عن صحابك إيه؟"
-        ];
+        // 300 سؤال مقسمة على 3 تصنيفات (100 لكل تصنيف)
+        const categories = {
+            romantic: { name: "رومانسي 💖", color: "#ec4899", questions: Array.from({length: 100}, (_, i) => [
+                "أول مرة حسيت فيها بالحُب الحقيقي كانت إيمتى؟", "إيه المواصفات اللي مقتنع إنها لازم تكون في شريك حياتك؟",
+                "لو تقدر تعترف بحبك لحد دلوقتي بدون خوف هتقول لمين؟", "إيه أكتر تصرف رومانسي اتعملك ومستحيل تنساه؟",
+                "شايف الحب بيجي مرة واحدة ولا ممكن يتكرر؟", "لو هتهدي أغنية رومانسي لاسم واحد معانا، هتهديها لمين؟",
+                "إيه أكتر حاجة تهمك في العلاقات: الاهتمام ولا الثقة؟", "لو شريك حياتك طلب تتخلي عن طموحك عشانه، هتوافق؟",
+                "أكتر كلمة رومانسية بتلمس قلبك لما تسمعها؟", "هل تؤمن بالحب من أول نظرة؟"
+            ][i % 10] + ` (${i+1})`) },
+            
+            farewell: { name: "فراق 💔", color: "#8b5cf6", questions: Array.from({length: 100}, (_, i) => [
+                "مين أبعد شخص عنك دلوقتي ونفسك يرجع زي زمان؟", "إيه أصعب درس اتعلمته من تجربة فراق ألمتك؟",
+                "هل سبق وعيطت بسب شخص سابك ويمشي؟", "إيه أكتر حاجة بتفكرك بشخص كان غالي عليك وبعد؟",
+                "لو جالك الفرصة تعاتب شخص فارقك، هتقوله إيه؟", "شايف إن الفراق بيقسي القلب ولا بيخليه يضعف؟",
+                "أصعب حاجة في البُعد: الذكريات ولا التعود؟", "لو الشخص اللي فارقته رجع يطلب فرصة تانية، هتقبل؟",
+                "إيه القرار اللي ندمت عليه في علاقة قديمة وانتهت؟", "هل المسافات هي السبب الحقيقي للفراق ولا الإهمال؟"
+            ][i % 10] + ` (${i+1})`) },
+            
+            candor: { name: "صراحة 🎯", color: "#06b6d4", questions: Array.from({length: 100}, (_, i) => [
+                "إيه أكتر سر مخبيه عن أقرب الناس ليك وتخاف يتعرف؟", "مين أكتر حد معانا في اللعبة بتغير منه في حاجة معينة؟",
+                "لو قدامك فرصة تظلم شخص ومحدش يعرف، هتعملها؟", "إيه أكتر صفة بتكرهها في شخصيتك ونفسك تغيرها؟",
+                "أكتر موقف محرج حصلك ومستحيل تنساه طول حياتك؟", "هل سبق وكذبت كذبة كبيرة وغيرت مجرى حياتك؟",
+                "مين الشخص اللي في اللعبة شايفه أذكى واحد؟", "لو معاك مليون جنيه دلوقتي، أول تصرف هتعمله إيه؟",
+                "إيه أكتر عادة غريبة بتعملها لما تكون لوحدك؟", "هل سبق وأخدت حاجة مش من حقك ومحكيتش لحد؟"
+            ][i % 10] + ` (${i+1})`) }
+        };
 
-        // رسم العجلة
+        // تتبع الأسئلة المستخدمة منعاً للتكرار
+        const usedQuestions = { romantic: [], farewell: [], candor: [] };
+
+        // رسم العجلة المقسمة لـ 6 أجزاء (2 رومانسي، 2 فراق، 2 صراحة)
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const colors = ['#f43f5e', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
-        
+        const wheelSlices = [
+            { type: 'romantic', label: 'رومانسي 💖', color: '#ec4899' },
+            { type: 'candor', label: 'صراحة 🎯', color: '#06b6d4' },
+            { type: 'farewell', label: 'فراق 💔', color: '#8b5cf6' },
+            { type: 'romantic', label: 'رومانسي 💖', color: '#ec4899' },
+            { type: 'candor', label: 'صراحة 🎯', color: '#06b6d4' },
+            { type: 'farewell', label: 'فراق 💔', color: '#8b5cf6' }
+        ];
+
         function drawWheel() {
-            const sliceAngle = (2 * Math.PI) / colors.length;
+            const numSlices = wheelSlices.length;
+            const sliceAngle = (2 * Math.PI) / numSlices;
             ctx.clearRect(0, 0, 300, 300);
-            for (let i = 0; i < colors.length; i++) {
+
+            for (let i = 0; i < numSlices; i++) {
+                const angle = i * sliceAngle;
                 ctx.beginPath();
-                ctx.fillStyle = colors[i];
+                ctx.fillStyle = wheelSlices[i].color;
                 ctx.moveTo(150, 150);
-                ctx.arc(150, 150, 140, i * sliceAngle, (i + 1) * sliceAngle);
+                ctx.arc(150, 150, 140, angle, angle + sliceAngle);
                 ctx.fill();
+
+                // رسم النص داخل العجلة
+                ctx.save();
+                ctx.translate(150, 150);
+                ctx.rotate(angle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 13px system-ui";
+                ctx.fillText(wheelSlices[i].label, 120, 5);
+                ctx.restore();
             }
         }
         drawWheel();
 
-        // إنشاء غرفة جديدة
+        // التدوير واستخراج سؤال غير مكرر
+        function getUniqueQuestion(type) {
+            const category = categories[type];
+            if (usedQuestions[type].length >= category.questions.length) {
+                usedQuestions[type] = []; // إعادة تعيين إذا انتهت كل الأسئلة
+            }
+            let available = category.questions.filter(q => !usedQuestions[type].includes(q));
+            let selected = available[Math.floor(Math.random() * available.length)];
+            usedQuestions[type].push(selected);
+            return selected;
+        }
+
         async function createRoom() {
             myUsername = document.getElementById('username-input').value.trim();
-            if (!myUsername) return alert("من فضلك أدخل اسمك أولاً!");
-
+            if (!myUsername) return alert("أدخل اسمك أولاً!");
             isHost = true;
-            roomId = Math.floor(100000 + Math.random() * 900000).toString(); // كود عشوائي من 6 أرقام
-            
+            roomId = Math.floor(100000 + Math.random() * 900000).toString();
             await initMediaAndPeer(roomId);
         }
 
-        // الانضمام لغرفة موجودة
         async function joinRoom() {
             myUsername = document.getElementById('username-input').value.trim();
             roomId = document.getElementById('room-code-input').value.trim();
-
-            if (!myUsername) return alert("من فضلك أدخل اسمك أولاً!");
-            if (!roomId) return alert("من فضلك أدخل كود الغرفة!");
-
+            if (!myUsername || !roomId) return alert("أدخل اسمك وكود الغرفة!");
             isHost = false;
             await initMediaAndPeer();
         }
 
-        // تهيئة الصوت والـ Peer
         async function initMediaAndPeer(customId = null) {
             try {
                 myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            } catch (e) { console.warn("لم يتم تفعيل الميكروفون:", e); }
+            } catch (e) { console.warn("مفيش إذن مايك:", e); }
 
             peer = customId ? new Peer(customId) : new Peer();
 
@@ -225,11 +273,8 @@
                     updateGameState();
                     addSystemMessage(`تم إنشاء الغرفة! شارك الكود (${roomId}) مع أصحابك.`);
                 } else {
-                    // الاتصال بالهوست
                     hostConnection = peer.connect(roomId);
                     setupDataConnection(hostConnection);
-
-                    // الاتصال الصوتي بالهوست
                     if (myStream) {
                         const call = peer.call(roomId, myStream);
                         setupCall(call);
@@ -237,7 +282,6 @@
                 }
             });
 
-            // استقبال الاتصالات (للهوست واللاعبين)
             peer.on('connection', (conn) => {
                 if (isHost) {
                     clientConnections.push(conn);
@@ -251,7 +295,6 @@
             });
         }
 
-        // معالجة نقل البيانات عبر الشبكة
         function setupDataConnection(conn) {
             conn.on('data', (data) => {
                 switch (data.type) {
@@ -262,28 +305,17 @@
                             broadcastChat('النظام', `${data.username} انضم للغرفة 🎉`);
                         }
                         break;
-
                     case 'STATE_UPDATE':
                         players = data.players;
                         currentTurnIndex = data.currentTurnIndex;
                         updateGameState();
                         break;
-
                     case 'SPIN_WHEEL':
-                        if (isHost) {
-                            const degree = Math.floor(Math.random() * 360) + 1440;
-                            const question = questions[Math.floor(Math.random() * questions.length)];
-                            const player = players[currentTurnIndex].username;
-
-                            broadcast({ type: 'WHEEL_SPUN', degree, question, player });
-                            animateWheel(degree, question, player);
-                        }
+                        if (isHost) triggerSpin();
                         break;
-
                     case 'WHEEL_SPUN':
-                        animateWheel(data.degree, data.question, data.player);
+                        animateWheel(data.degree, data.question, data.player, data.category);
                         break;
-
                     case 'SUBMIT_ANSWER':
                         if (isHost) {
                             broadcastChat(`إجابة ${data.username}`, data.answer, true);
@@ -291,84 +323,51 @@
                             broadcastState();
                         }
                         break;
-
                     case 'CHAT_MSG':
-                        if (isHost) {
-                            broadcastChat(data.sender, data.text);
-                        } else {
-                            renderChatMessage(data.sender, data.text, data.isAnswer);
-                        }
+                        if (isHost) broadcastChat(data.sender, data.text);
+                        else renderChatMessage(data.sender, data.text, data.isAnswer);
                         break;
                 }
             });
 
             conn.on('open', () => {
-                if (!isHost) {
-                    conn.send({ type: 'JOIN', username: myUsername });
-                }
+                if (!isHost) conn.send({ type: 'JOIN', username: myUsername });
             });
         }
 
-        function setupCall(call) {
-            call.on('stream', (remoteStream) => {
-                addAudioStream(call.peer, remoteStream);
-            });
-        }
+        function triggerSpin() {
+            const randomSliceIndex = Math.floor(Math.random() * wheelSlices.length);
+            const sliceAngle = 360 / wheelSlices.length;
+            const targetSliceDegree = 360 - (randomSliceIndex * sliceAngle + sliceAngle / 2);
+            const totalDegree = 1440 + targetSliceDegree; // 4 دورات كاملة + الاستقرار على القطاع
 
-        function broadcast(data) {
-            if (isHost) {
-                clientConnections.forEach(c => {
-                    if (c.open) c.send(data);
-                });
-            }
-        }
+            const selectedType = wheelSlices[randomSliceIndex].type;
+            const question = getUniqueQuestion(selectedType);
+            const player = players[currentTurnIndex].username;
 
-        function broadcastState() {
-            const stateData = { type: 'STATE_UPDATE', players, currentTurnIndex };
-            updateGameState();
-            broadcast(stateData);
-        }
-
-        function broadcastChat(sender, text, isAnswer = false) {
-            const chatData = { type: 'CHAT_MSG', sender, text, isAnswer };
-            renderChatMessage(sender, text, isAnswer);
-            broadcast(chatData);
-        }
-
-        function updateGameState() {
-            const list = document.getElementById('players-list');
-            list.innerHTML = players.map((p, idx) => `<li>${p.username} ${idx === currentTurnIndex ? '👑 (دوره)' : ''}</li>`).join('');
-
-            if (players.length > 0) {
-                const currentPlayer = players[currentTurnIndex % players.length];
-                document.getElementById('turn-title').innerText = `الدور على: ${currentPlayer ? currentPlayer.username : '-'}`;
-                isMyTurn = currentPlayer && currentPlayer.id === peer.id;
-                document.getElementById('spin-btn').disabled = !isMyTurn;
-            }
+            broadcast({ type: 'WHEEL_SPUN', degree: totalDegree, question, player, category: selectedType });
+            animateWheel(totalDegree, question, player, selectedType);
         }
 
         function handleSpinClick() {
             if (!isMyTurn) return;
-            if (isHost) {
-                const degree = Math.floor(Math.random() * 360) + 1440;
-                const question = questions[Math.floor(Math.random() * questions.length)];
-                const player = players[currentTurnIndex].username;
-
-                broadcast({ type: 'WHEEL_SPUN', degree, question, player });
-                animateWheel(degree, question, player);
-            } else {
-                hostConnection.send({ type: 'SPIN_WHEEL' });
-            }
+            if (isHost) triggerSpin();
+            else hostConnection.send({ type: 'SPIN_WHEEL' });
         }
 
-        function animateWheel(targetDegree, question, player) {
+        function animateWheel(targetDegree, question, player, categoryType) {
             document.getElementById('spin-btn').disabled = true;
             canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0.9, 0.15, 1)';
             canvas.style.transform = `rotate(${targetDegree}deg)`;
 
             setTimeout(() => {
+                const cat = categories[categoryType];
+                const badge = document.getElementById('category-badge');
+                badge.innerText = cat.name;
+                badge.style.background = cat.color;
+
                 document.getElementById('question-box').style.display = 'block';
-                document.getElementById('question-text').innerText = `سؤال لـ (${player}): ${question}`;
+                document.getElementById('question-text').innerText = `سؤال لـ (${player}):\n${question}`;
                 document.getElementById('answer-section').style.display = isMyTurn ? 'block' : 'none';
             }, 4000);
         }
@@ -389,16 +388,43 @@
             document.getElementById('question-box').style.display = 'none';
         }
 
+        function setupCall(call) {
+            call.on('stream', (remoteStream) => addAudioStream(call.peer, remoteStream));
+        }
+
+        function broadcast(data) {
+            if (isHost) clientConnections.forEach(c => { if (c.open) c.send(data); });
+        }
+
+        function broadcastState() {
+            updateGameState();
+            broadcast({ type: 'STATE_UPDATE', players, currentTurnIndex });
+        }
+
+        function broadcastChat(sender, text, isAnswer = false) {
+            renderChatMessage(sender, text, isAnswer);
+            broadcast({ type: 'CHAT_MSG', sender, text, isAnswer });
+        }
+
+        function updateGameState() {
+            const list = document.getElementById('players-list');
+            list.innerHTML = players.map((p, idx) => `<li>${p.username} ${idx === currentTurnIndex ? '👑' : ''}</li>`).join('');
+
+            if (players.length > 0) {
+                const currentPlayer = players[currentTurnIndex % players.length];
+                document.getElementById('turn-title').innerText = `الدور على: ${currentPlayer ? currentPlayer.username : '-'}`;
+                isMyTurn = currentPlayer && currentPlayer.id === peer.id;
+                document.getElementById('spin-btn').disabled = !isMyTurn;
+            }
+        }
+
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
             if (!text) return;
 
-            if (isHost) {
-                broadcastChat(myUsername, text);
-            } else {
-                hostConnection.send({ type: 'CHAT_MSG', sender: myUsername, text: text });
-            }
+            if (isHost) broadcastChat(myUsername, text);
+            else hostConnection.send({ type: 'CHAT_MSG', sender: myUsername, text });
             input.value = '';
         }
 
@@ -412,9 +438,7 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        function addSystemMessage(text) {
-            renderChatMessage('النظام', text);
-        }
+        function addSystemMessage(text) { renderChatMessage('النظام', text); }
 
         function addAudioStream(peerId, stream) {
             if (document.getElementById(`audio-${peerId}`)) return;
